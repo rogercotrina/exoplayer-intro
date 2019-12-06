@@ -7,9 +7,9 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.SimpleExoPlayer
-import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.source.dash.DashMediaSource
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import kotlinx.android.synthetic.main.activity_player.*
@@ -58,9 +58,15 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun initializePlayer() {
-        player = ExoPlayerFactory.newSimpleInstance(this)
+
+        if (player == null) {
+            val trackSelector = DefaultTrackSelector()
+            trackSelector.setParameters(trackSelector.buildUponParameters().setMaxVideoSizeSd())
+            player = ExoPlayerFactory.newSimpleInstance(this, trackSelector)
+        }
+
         videoView.player = player
-        val uri = Uri.parse(getString(R.string.media_url_mp4))
+        val uri = Uri.parse(getString(R.string.media_url_dash))
         val mediaSource = buildMediaSource(uri)
         player?.playWhenReady = playWhenReady
         player?.apply {
@@ -71,12 +77,9 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun buildMediaSource(uri: Uri): MediaSource {
         val dataSourceFactory = DefaultDataSourceFactory(this, "exoplayer-codelab")
-        val mediaSourceFactory = ProgressiveMediaSource.Factory(dataSourceFactory)
-        val mediaSource1 = mediaSourceFactory.createMediaSource(uri)
-
-        val audioUri = Uri.parse(getString(R.string.media_url_mp3))
-        val mediaSource2 = mediaSourceFactory.createMediaSource(audioUri)
-        return ConcatenatingMediaSource(mediaSource1, mediaSource2)
+        // Supporting Dynamic Adaptive Streaming over HTTP (DASH) media source.
+        val mediaSourceFactory = DashMediaSource.Factory(dataSourceFactory)
+        return mediaSourceFactory.createMediaSource(uri)
     }
 
     @SuppressLint("InlinedApi")
